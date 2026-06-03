@@ -70,6 +70,36 @@ DEFAULT_AGENTS = [
         ),
         personality="efficient, fast, no-nonsense",
     ),
+    Agent(
+        id="gemini-pro",
+        name="Gemini",
+        type="ai",
+        provider="google",
+        hexagon=HexagonPanel(
+            scores={"reasoning": 7.5, "speed": 8.0, "creativity": 7.0, "accuracy": 7.5, "cost": 7.0, "reliability": 8.5},
+        ),
+        personality="steady, multimodal, works well with others",
+    ),
+    Agent(
+        id="qwen-max",
+        name="Qwen",
+        type="ai",
+        provider="alibaba",
+        hexagon=HexagonPanel(
+            scores={"reasoning": 6.5, "speed": 8.5, "creativity": 7.0, "accuracy": 6.5, "cost": 9.5, "reliability": 7.5},
+        ),
+        personality="budget-friendly, solid for routine work",
+    ),
+    Agent(
+        id="grok",
+        name="Grok",
+        type="ai",
+        provider="xai",
+        hexagon=HexagonPanel(
+            scores={"reasoning": 6.0, "speed": 7.5, "creativity": 8.5, "accuracy": 5.5, "cost": 5.0, "reliability": 6.5},
+        ),
+        personality="unfiltered, irreverent, creative wildcard",
+    ),
 ]
 
 
@@ -108,3 +138,41 @@ class Registry:
     def load_defaults(self):
         for agent in DEFAULT_AGENTS:
             self.add(agent)
+
+    def to_dict(self) -> dict:
+        """Serialize registry to a plain dict for JSON persistence."""
+        return {
+            "agents": [a.to_dict() for a in self.agents.values()],
+            "bond_graph": self.bond_graph,
+        }
+
+    def save_json(self, path: str):
+        """Persist the entire registry to a JSON file."""
+        with open(path, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    def load_json(self, path: str):
+        """Restore registry from a JSON file. Merges with existing data."""
+        with open(path) as f:
+            data = json.load(f)
+        for ad in data.get("agents", []):
+            hd = ad.get("hexagon", {})
+            agent = Agent(
+                id=ad["id"],
+                name=ad.get("name", ad["id"]),
+                type=ad.get("type", "ai"),
+                provider=ad.get("provider", ""),
+                hexagon=HexagonPanel(
+                    dimensions=hd.get("dimensions", [
+                        "reasoning", "speed", "creativity",
+                        "accuracy", "cost", "reliability",
+                    ]),
+                    scores=hd.get("scores", {}),
+                ),
+                personality=ad.get("personality", ""),
+                mood=ad.get("mood", "ready"),
+                load=ad.get("load", 0.0),
+                bonds=ad.get("bonds", {}),
+            )
+            self.add(agent)
+        self.bond_graph.update(data.get("bond_graph", {}))
